@@ -7,6 +7,10 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+// The gate's limits for this competition: exactly one number, 1-5 digits.
+const GATE_MIN_CHARS = 1;
+const GATE_MAX_CHARS = 5;
+
 const TAB_COUNT = "137";
 
 function isDigitsOnly(text: string): boolean {
@@ -15,8 +19,10 @@ function isDigitsOnly(text: string): boolean {
 
 function main(): void {
   // The gate wants exactly one number, 1-5 characters, digits only.
-  if (TAB_COUNT.length < 1 || TAB_COUNT.length > 5) {
-    throw new Error(`tab count must be 1-5 characters, got ${TAB_COUNT.length}`);
+  if (TAB_COUNT.length < GATE_MIN_CHARS || TAB_COUNT.length > GATE_MAX_CHARS) {
+    throw new Error(
+      `tab count must be ${GATE_MIN_CHARS}-${GATE_MAX_CHARS} characters, got ${TAB_COUNT.length}`,
+    );
   }
   if (!isDigitsOnly(TAB_COUNT)) {
     throw new Error(`tab count must be digits only, got ${JSON.stringify(TAB_COUNT)}`);
@@ -32,12 +38,17 @@ function main(): void {
   // No trailing newline: the file holds exactly the digits, nothing else.
   writeFileSync(entryPath, TAB_COUNT, "utf8");
 
-  // Read it back and confirm it matches byte for byte.
-  const written = readFileSync(entryPath, "utf8");
-  if (written !== TAB_COUNT) {
+  // Read it back as bytes and confirm it matches exactly: same digits,
+  // and no trailing newline byte (0x0A) sneaking in at the end.
+  const writtenBytes = readFileSync(entryPath);
+  const expectedBytes = Buffer.from(TAB_COUNT, "utf8");
+  if (!writtenBytes.equals(expectedBytes)) {
     throw new Error(
-      `entry.txt mismatch: wrote ${JSON.stringify(TAB_COUNT)}, read back ${JSON.stringify(written)}`,
+      `entry.txt mismatch: wrote ${JSON.stringify(TAB_COUNT)}, read back ${JSON.stringify(writtenBytes.toString("utf8"))}`,
     );
+  }
+  if (writtenBytes[writtenBytes.length - 1] === 0x0a) {
+    throw new Error("entry.txt must not end with a newline");
   }
   console.log(`wrote ${TAB_COUNT.length} characters to ${entryPath}`);
 }
